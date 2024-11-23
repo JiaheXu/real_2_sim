@@ -139,6 +139,30 @@ def xyz_from_depth(depth_image, depth_intrinsic, depth_extrinsic, depth_scale=10
     xyz = xyz[:,:,0:3]
     return xyz
 
+# def depth_from_xyz(xyz, depth_intrinsic, depth_extrinsic, depth_scale=1000.):
+#     # Return X, Y, Z coordinates from a depth map.
+#     # This mimics OpenCV cv2.rgbd.depthTo3d() function
+#     fx = depth_intrinsic[0, 0]
+#     fy = depth_intrinsic[1, 1]
+#     cx = depth_intrinsic[0, 2]
+#     cy = depth_intrinsic[1, 2]
+#     # Construct (y, x) array with pixel coordinates
+#     y, x = np.meshgrid(range(depth_image.shape[0]), range(depth_image.shape[1]), sparse=False, indexing='ij')
+
+#     X = (x - cx) * depth_image / (fx * depth_scale)
+#     Y = (y - cy) * depth_image / (fy * depth_scale)
+#     ones = np.ones( ( depth_image.shape[0], depth_image.shape[1], 1) )
+#     xyz = np.stack([X, Y, depth_image / depth_scale], axis=2)
+#     xyz[depth_image == 0] = 0.0
+
+#     # print("xyz: ", xyz.shape)
+#     # print("ones: ", ones.shape)
+#     # print("depth_extrinsic: ", depth_extrinsic.shape)
+#     xyz = np.concatenate([xyz, ones], axis=2)
+#     xyz =  xyz @ np.transpose( depth_extrinsic)
+#     xyz = xyz[:,:,0:3]
+#     return xyz
+
 def xyz_rgb_validation(rgb, xyz):
     # verify xyz and depth value
     valid_pcd = o3d.geometry.PointCloud()
