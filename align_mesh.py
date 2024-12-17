@@ -6,11 +6,11 @@ import argparse
 import cv2
 import open3d as o3d
 import copy
-import torch
+#import torch
 import plyfile
 
 # import sensor_msgs.point_cloud2 as pc2
-from numpy.linalg import inv
+from numpy.linalg import inv, det
 # from lib_cloud_conversion_between_Open3D_and_ROS import convertCloudFromRosToOpen3d
 from scipy.spatial.transform import Rotation
 from utils import *
@@ -45,6 +45,9 @@ def align_meshes_pcd(mesh, obj_pcd, bgd_pcd, max_iters=30, threshold=1e-6):
     Align a mesh to a point cloud.
     """
     # Sample points on the surface of the mesh
+    
+    original_obj_pcd = obj_pcd
+
     obj_np = pcd_2_numpy(obj_pcd)
 
     mesh_points = mesh2points(mesh, obj_np.shape[0]*2)
@@ -65,9 +68,8 @@ def align_meshes_pcd(mesh, obj_pcd, bgd_pcd, max_iters=30, threshold=1e-6):
 
     print("pcd_scale: ", pcd_scale)
     print("mesh_scale: ", mesh_scale)
-    # # rough_scale = 1.0
     scaled_mesh_points = (mesh_points)*rough_scale
-    # scaled_mesh_points[:,0] += 0.2
+
 
     # visualize_pcds( 
     #     [
@@ -87,10 +89,34 @@ def align_meshes_pcd(mesh, obj_pcd, bgd_pcd, max_iters=30, threshold=1e-6):
     final_pcd = numpy_2_pcd(scaled_mesh_points)
     final_pcd.transform( T )
     
+    
+    print("Transform: ", T)
+    det_T = det(T[0:3, 0:3])
+    T_scale = det_T ** (1/3)
+    T[0:3, 0:3] /= T_scale
+    T[0:3, 3] += obj_center
+    final_scale = rough_scale * T_scale
+    # print("scale: ", det_T )
+    # print("normed: ", det( T[0:3, 0:3]) )
+
+    scaled_mesh_points = (mesh_points)*final_scale
+    scaled_mesh_pcd = numpy_2_pcd( scaled_mesh_points, np.array( [1., 0., 0.] ) )
+    scaled_mesh_pcd.transform( T )
+    # visualize_pcds( 
+    #     [
+    #         final_pcd,
+    #         numpy_2_pcd( obj_points) , 
+    #     ]
+    #     )
+    print("final result: ")
+    print("mesh scale: ", final_scale)
+    print("transform: ", T)
     visualize_pcds( 
         [
-            final_pcd,
-            numpy_2_pcd( obj_points) , 
+            scaled_mesh_pcd,
+            # original_obj_pcd,
+            bgd_pcd,
+            # numpy_2_pcd( obj_points) , 
         ]
         )
 
@@ -152,7 +178,7 @@ def write_ply(ply_path, points, colors= np.array([])):
 
 def main():
     parser = argparse.ArgumentParser(description="Align a mesh to a point cloud.")
-    parser.add_argument("-m", "--mesh_file", default="/home/jiahe/data/objects_mesh/red_cube/red_cube/Shaded/base.obj",  help="Provide mesh file.")    
+    parser.add_argument("-m", "--mesh_file", default="./red_cube/red_cube/Shaded/base.obj",  help="Provide mesh file.")    
     parser.add_argument("--depth_image", default="./512_depth.npy",  help="Provide depth image.")
     parser.add_argument("--mask", default="./1_msk.png",  help="Provide mask file.")
     
@@ -192,7 +218,7 @@ def main():
     obj_pcd.transform( cam_extrinsic )
 
     bgd_np = np.array(bgd_xyz)
-    bgd_np[:,2] = -0.05
+    # bgd_np[:,2] = -0.05
     bgd_pcd = numpy_2_pcd( bgd_np )
     bgd_pcd.transform( cam_extrinsic )
     # visualize_pcd(obj_pcd)
